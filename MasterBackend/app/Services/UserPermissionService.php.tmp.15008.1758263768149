@@ -1,0 +1,533 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\DbFLPASS;
+use App\Models\DbFLMENU;
+use App\Models\DbMENU;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Collection;
+use InvalidArgumentException;
+
+class UserPermissionService
+{
+    /**
+     * Get user menu permissions with enhanced validation and type casting
+     * Uses raw query for performance but adds proper validation and caching
+     * 
+     * @param string $userId User ID to get permissions for
+     * @return Collection Collection of menu permissions with proper types
+     * @throws InvalidArgumentException If user doesn't exist
+     */
+    public function getUserMenuPermissions(string $userId): Collection
+    {
+        // Validate user exists
+        if (!DbFLPASS::find($userId)) {
+            throw new InvalidArgumentException("User with ID '{$userId}' not found");
+        }
+
+        // Check cache first (5 minutes TTL)
+        $cacheKey = "user_menu_permissions_{$userId}";
+        
+        return Cache::remember($cacheKey, 300, function () use ($userId) {
+            $results = DB::select("
+                SELECT 
+                    A.USERID, 
+                    B.L0, 
+                    B.KODEMENU AS L1, 
+                    B.Keterangan AS Caption, 
+                    B.ACCESS, 
+                    B.icon,
+                    B.routename,
+                    'fas fa-folder' as group_icon,
+                    B.L0 as group_name,
+                    A.HASACCESS, 
+                    A.ISTAMBAH, 
+                    A.ISKOREKSI, 
+                    A.ISHAPUS, 
+                    A.ISCETAK,
+                    A.ISEXPORT, 
+                    A.TIPE
+                FROM DBFLMENU A
+                LEFT OUTER JOIN DBMENU B ON B.KODEMENU = A.L1
+                WHERE A.USERID = ?
+                ORDER BY A.USERID, A.L1
+            ", [$userId]);
+            
+            // Transform results with proper type casting
+            return collect($results)->map(function ($item) {
+                return (object) [
+                    'USERID' => $item->USERID,
+                    'L0' => $item->L0,
+                    'L1' => $item->L1,
+                    'Caption' => $item->Caption,
+                    'ACCESS' => (bool) $item->ACCESS,
+                    'icon' => $item->icon,
+                    'routename' => $item->routename,
+                    'group_icon' => $item->group_icon,
+                    'HASACCESS' => (bool) $item->HASACCESS,
+                    'ISTAMBAH' => (bool) $item->ISTAMBAH,
+                    'ISKOREKSI' => (bool) $item->ISKOREKSI,
+                    'ISHAPUS' => (bool) $item->ISHAPUS,
+                    'ISCETAK' => (bool) $item->ISCETAK,
+                    'ISEXPORT' => (bool) $item->ISEXPORT,
+                    'TIPE' => $item->TIPE
+                ];
+            });
+        });
+    }
+
+    /**
+     * Get hierarchical menu structure with permissions
+     */
+    public function getUserMenuHierarchy(string $userId): array
+    {
+        $permissions = collect($this->getUserMenuPermissions($userId));
+        $hierarchy = [];
+
+        foreach ($permissions as $perm) {
+            $l0 = $perm->L0 ?? 'Other';
+            
+            if (!isset($hierarchy[$l0])) {
+                $hierarchy[$l0] = [
+                    'level' => $l0,
+                    'menus' => []
+                ];
+            }
+
+            $hierarchy[$l0]['menus'][] = [
+                'code' => $perm->L1,
+                'caption' => $perm->Caption,
+                'access' => $perm->ACCESS,
+                'permissions' => [
+                    'has_access' => (bool) $perm->HASACCESS,
+                    'add' => (bool) $perm->ISTAMBAH,
+                    'edit' => (bool) $perm->ISKOREKSI,
+                    'delete' => (bool) $perm->ISHAPUS,
+                    'print' => (bool) $perm->ISCETAK,
+                    'export' => (bool) $perm->ISEXPORT,
+                ],
+                'type' => $perm->TIPE
+            ];
+        }
+
+        return $hierarchy;
+    }
+
+    /**
+     * Check if user has specific permission for menu with caching
+     * 
+     * @param string $userId User ID
+     * @param string $menuCode Menu code to check
+     * @param string $permission Permission type (access, add, edit, delete, print, export)
+     * @return bool True if user has permission, false otherwise
+     */
+    public function hasMenuPermission(string $userId, string $menuCode, string $permission = 'access'): bool
+    {
+        $cacheKey = "user_permission_{$userId}_{$menuCode}_{$permission}";
+        
+        return Cache::remember($cacheKey, 300, function () use ($userId, $menuCode, $permission) {
+            $userMenu = DbFLMENU::where('USERID', $userId)
+                ->where('L1', $menuCode)
+                ->first();
+
+            if (!$userMenu) {
+                return false;
+            }
+
+            switch ($permission) {
+                case 'access':
+                    return (bool) $userMenu->HASACCESS;
+                case 'add':
+                case 'create':
+                    return (bool) $userMenu->ISTAMBAH;
+                case 'edit':
+                case 'update':
+                    return (bool) $userMenu->ISKOREKSI;
+                case 'delete':
+                    return (bool) $userMenu->ISHAPUS;
+                case 'print':
+                    return (bool) $userMenu->ISCETAK;
+                case 'export':
+                    return (bool) $userMenu->ISEXPORT;
+                default:
+                    return false;
+            }
+        });
+    }
+
+    /**
+     * Update user permission for specific menu with cache invalidation
+     * 
+     * @param string $userId User ID
+     * @param string $menuCode Menu code
+     * @param array $permissions Array of permissions to update
+     * @return bool True if successful, false otherwise
+     */
+    public function updateUserPermission(string $userId, string $menuCode, array $permissions): bool
+    {
+        try {
+            // Use updateOrCreate for cleaner approach
+            $userMenu = DbFLMENU::updateOrCreate(
+                [
+                    'USERID' => $userId,
+                    'L1' => $menuCode
+                ],
+                array_filter($permissions, function ($key) {
+                    return in_array($key, [
+                        'HASACCESS', 'ISTAMBAH', 'ISKOREKSI', 
+                        'ISHAPUS', 'ISCETAK', 'ISEXPORT', 'TIPE'
+                    ]);
+                }, ARRAY_FILTER_USE_KEY)
+            );
+
+            // Clear related cache
+            $this->clearUserPermissionCache($userId, $menuCode);
+            
+            return (bool) $userMenu;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Copy permissions from one user to another
+     */
+    public function copyUserPermissions(string $fromUserId, string $toUserId): bool
+    {
+        try {
+            // Delete existing permissions for target user
+            DbFLMENU::where('USERID', $toUserId)->delete();
+
+            // Get source user permissions
+            $sourcePermissions = DbFLMENU::where('USERID', $fromUserId)->get();
+
+            // Copy to target user
+            foreach ($sourcePermissions as $permission) {
+                $newPermission = $permission->replicate();
+                $newPermission->USERID = $toUserId;
+                $newPermission->save();
+            }
+
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Get all available menus for permission assignment with caching
+     * 
+     * @return Collection Collection of all menus
+     */
+    public function getAllMenus(): Collection
+    {
+        return Cache::remember('all_menus', 600, function () {
+            return DbMENU::select('KODEMENU', 'Keterangan', 'L0', 'ACCESS')
+                ->where('ACCESS', 1) // Only active menus
+                ->orderBy('L0')
+                ->orderBy('KODEMENU')
+                ->get();
+        });
+    }
+
+    /**
+     * Set default permissions for new user based on user level
+     */
+    public function setDefaultPermissions(string $userId, int $userLevel): bool
+    {
+        try {
+            $menus = $this->getAllMenus();
+            
+            foreach ($menus as $menu) {
+                $permission = new DbFLMENU();
+                $permission->USERID = $userId;
+                $permission->L1 = $menu->KODEMENU;
+                
+                // Set default permissions based on user level
+                if ($userLevel >= 5) {
+                    // Super Admin - full access
+                    $permission->HASACCESS = true;
+                    $permission->ISTAMBAH = true;
+                    $permission->ISKOREKSI = true;
+                    $permission->ISHAPUS = true;
+                    $permission->ISCETAK = true;
+                    $permission->ISEXPORT = true;
+                } elseif ($userLevel >= 3) {
+                    // Manager - read/write access
+                    $permission->HASACCESS = true;
+                    $permission->ISTAMBAH = true;
+                    $permission->ISKOREKSI = true;
+                    $permission->ISHAPUS = false;
+                    $permission->ISCETAK = true;
+                    $permission->ISEXPORT = true;
+                } else {
+                    // Regular user - read only
+                    $permission->HASACCESS = true;
+                    $permission->ISTAMBAH = false;
+                    $permission->ISKOREKSI = false;
+                    $permission->ISHAPUS = false;
+                    $permission->ISCETAK = true;
+                    $permission->ISEXPORT = false;
+                }
+                
+                $permission->save();
+            }
+
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Get permission summary for user
+     */
+    public function getUserPermissionSummary(string $userId): array
+    {
+        $permissions = $this->getUserMenuPermissions($userId);
+        $total = count($permissions);
+        
+        $summary = [
+            'total_menus' => $total,
+            'accessible_menus' => 0,
+            'add_permissions' => 0,
+            'edit_permissions' => 0,
+            'delete_permissions' => 0,
+            'print_permissions' => 0,
+            'export_permissions' => 0,
+        ];
+
+        foreach ($permissions as $perm) {
+            if ($perm->HASACCESS) $summary['accessible_menus']++;
+            if ($perm->ISTAMBAH) $summary['add_permissions']++;
+            if ($perm->ISKOREKSI) $summary['edit_permissions']++;
+            if ($perm->ISHAPUS) $summary['delete_permissions']++;
+            if ($perm->ISCETAK) $summary['print_permissions']++;
+            if ($perm->ISEXPORT) $summary['export_permissions']++;
+        }
+
+        return $summary;
+    }
+
+    /**
+     * Get user menus formatted for frontend
+     * 
+     * @param string $userId
+     * @return array
+     */
+    public function getUserMenus(string $userId): array
+    {
+        try {
+            // Use exact SQL query as provided by user
+            $menuData = DB::select("
+                SELECT
+                    A.USERID,
+                    B.L0,                    -- Group from DBMENU
+                    B.KODEMENU AS L1,        -- Menu code from DBMENU
+                    B.Keterangan AS Caption, -- Menu name from DBMENU
+                    B.ACCESS,                -- Menu active status
+                    A.HASACCESS,             -- User access permission
+                    A.ISTAMBAH,              -- User add permission
+                    A.ISKOREKSI,             -- User edit permission
+                    A.ISHAPUS,               -- User delete permission
+                    A.ISCETAK,               -- User print permission
+                    A.ISEXPORT,              -- User export permission
+                    A.TIPE,                  -- Permission type
+                    B.routename,
+                    B.icon
+                FROM DBFLMENU A
+                LEFT OUTER JOIN DBMENU B ON B.KODEMENU = A.L1
+                WHERE A.USERID = ? AND A.HASACCESS = 1
+                ORDER BY A.USERID, B.L0, A.L1
+            ", [$userId]);
+
+            // Build hierarchy from SQL query results - DYNAMIC APPROACH
+            $menuGroups = [];
+            $groupHeaders = [];
+
+            // First pass: collect group headers (L0 = 0)
+            foreach ($menuData as $menu) {
+                if ($menu->L0 == '0') {
+                    $groupHeaders[$menu->L1] = [
+                        'title' => $menu->Caption,
+                        'icon' => $menu->icon ?: 'fas fa-folder'
+                    ];
+                }
+            }
+
+            // Build dynamic L0 to group mapping based on menu code patterns
+            // Instead of hardcoding, we'll analyze the menu codes to determine parent groups
+            $l0ToGroupMap = [];
+            $processedL0s = [];
+
+            foreach ($menuData as $menu) {
+                if ($menu->L0 == '0') continue; // Skip headers
+
+                $l0 = $menu->L0;
+                $menuCode = $menu->L1;
+
+                // Skip if we already processed this L0
+                if (in_array($l0, $processedL0s)) continue;
+
+                // Determine parent group based on menu code pattern
+                $parentGroup = null;
+
+                // Pattern analysis based on prompt.md structure
+                if (preg_match('/^00/', $menuCode)) {
+                    $parentGroup = '00'; // Berkas group
+                } elseif (preg_match('/^01/', $menuCode)) {
+                    $parentGroup = '01'; // Master Data group
+                } elseif (preg_match('/^02/', $menuCode)) {
+                    $parentGroup = '02'; // Accounting group
+                } elseif (preg_match('/^03/', $menuCode)) {
+                    $parentGroup = '03'; // Kepesertaan group
+                } elseif (preg_match('/^08/', $menuCode)) {
+                    $parentGroup = '08'; // Laporan-laporan group
+                } elseif (preg_match('/^081/', $menuCode)) {
+                    $parentGroup = '081'; // Utilitas group
+                } elseif (preg_match('/^09/', $menuCode)) {
+                    $parentGroup = '09'; // Jendela group
+                }
+
+                // If we found a pattern match, map this L0 to the parent group
+                if ($parentGroup) {
+                    $l0ToGroupMap[$l0] = $parentGroup;
+                    $processedL0s[] = $l0;
+                }
+            }
+
+            // Default icons for groups
+            $defaultGroupIcons = [
+                '00' => 'fas fa-folder-open',
+                '01' => 'fas fa-database',
+                '02' => 'fas fa-calculator',
+                '03' => 'fas fa-users',
+                '08' => 'fas fa-chart-bar',
+                '081' => 'fas fa-tools',
+                '09' => 'fas fa-window-maximize'
+            ];
+
+            // Second pass: process menu items and group them
+            foreach ($menuData as $menu) {
+                // Skip group headers
+                if ($menu->L0 == '0') {
+                    continue;
+                }
+
+                $l0 = $menu->L0;
+
+                // Determine parent group for this L0
+                $parentGroupCode = $l0ToGroupMap[$l0] ?? null;
+
+                // If no mapping found, try to determine from menu code directly
+                if (!$parentGroupCode) {
+                    $menuCode = $menu->L1;
+                    if (preg_match('/^(00|01|02|03|08|081|09)/', $menuCode, $matches)) {
+                        $parentGroupCode = $matches[1];
+                    } else {
+                        $parentGroupCode = 'Other';
+                    }
+                }
+
+                // Get group info from headers or use defaults
+                if (isset($groupHeaders[$parentGroupCode])) {
+                    $groupTitle = $groupHeaders[$parentGroupCode]['title'];
+                    $groupIcon = $groupHeaders[$parentGroupCode]['icon'] ?: $defaultGroupIcons[$parentGroupCode];
+                } else {
+                    // Use default names based on prompt.md
+                    $defaultTitles = [
+                        '00' => 'Berkas',
+                        '01' => 'Master Data',
+                        '02' => 'Accounting',
+                        '03' => 'Kepesertaan',
+                        '08' => 'Laporan-laporan',
+                        '081' => 'Utilitas',
+                        '09' => 'Jendela'
+                    ];
+                    $groupTitle = $defaultTitles[$parentGroupCode] ?? $parentGroupCode;
+                    $groupIcon = $defaultGroupIcons[$parentGroupCode] ?? 'fas fa-folder';
+                }
+
+                // Initialize group if not exists
+                if (!isset($menuGroups[$parentGroupCode])) {
+                    $menuGroups[$parentGroupCode] = [
+                        'title' => $groupTitle,
+                        'icon' => $groupIcon,
+                        'items' => []
+                    ];
+                }
+
+                // Add menu item to group
+                $menuGroups[$parentGroupCode]['items'][] = [
+                    'code' => $menu->L1,
+                    'title' => $menu->Caption,
+                    'icon' => $menu->icon ?: 'fas fa-circle',
+                    'route' => $menu->routename ?: '#',
+                    'permissions' => [
+                        'access' => (bool) $menu->HASACCESS,
+                        'add' => (bool) $menu->ISTAMBAH,
+                        'edit' => (bool) $menu->ISKOREKSI,
+                        'delete' => (bool) $menu->ISHAPUS,
+                        'print' => (bool) $menu->ISCETAK,
+                        'export' => (bool) $menu->ISEXPORT
+                    ]
+                ];
+            }
+            
+            // Convert to array format expected by frontend
+            return array_values($menuGroups);
+            
+        } catch (\Exception $e) {
+            \Log::error('Get User Menus Error', [
+                'user_id' => $userId,
+                'error' => $e->getMessage()
+            ]);
+            
+            return [];
+        }
+    }
+
+    /**
+     * Get icon for menu based on code/title
+     * 
+     * FALLBACK FUNCTION: Hanya digunakan jika kolom 'icon' di database DBMENU kosong/null
+     * Prioritas: 1) Database icon, 2) Fallback dari mapping ini, 3) Default 'fas fa-circle'
+     */
+    private function getMenuIcon(string $code): string
+    {
+        $iconMap = [
+            'MASTER DATA' => 'fas fa-database',
+            'MASTER_CUSTOMER' => 'fas fa-users',
+            'MASTER_SUPPLIER' => 'fas fa-truck',
+            'MASTER_PRODUCT' => 'fas fa-box',
+            'TRANSACTION' => 'fas fa-exchange-alt',
+            'REPORT' => 'fas fa-chart-bar',
+            'SYSTEM' => 'fas fa-cog',
+            'USER' => 'fas fa-user',
+            'PERMISSION' => 'fas fa-key'
+        ];
+        
+        return $iconMap[$code] ?? 'fas fa-circle';
+    }
+
+    /**
+     * Get route for menu
+     * 
+     * FALLBACK FUNCTION: Hanya digunakan jika kolom 'routename' di database DBMENU kosong/null
+     * Prioritas: 1) Database routename, 2) Fallback dari mapping ini, 3) Default '#'
+     */
+    private function getMenuRoute(string $code): string
+    {
+        $routeMap = [
+            'MASTER_CUSTOMER' => 'master/customer',
+            'MASTER_SUPPLIER' => 'master/supplier',
+            'MASTER_PRODUCT' => 'master/product',
+            'USER_MANAGEMENT' => 'users',
+            'PERMISSION_MANAGEMENT' => 'permissions'
+        ];
+        
+        return $routeMap[$code] ?? strtolower(str_replace('_', '-', $code));
+    }
+}

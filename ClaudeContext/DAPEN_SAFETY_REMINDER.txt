@@ -1,0 +1,91 @@
+🛡️ DAPEN PROJECT - SAFETY REMINDER
+=====================================
+
+📍 LOKASI PROJECT: D:\ykka\Dapen\
+
+🚨 WAJIB SEBELUM CODING:
+========================
+INGAT: Backup dulu sebelum coding!
+Command: ./.safety/backup-before-work.sh
+
+Contoh:
+1. Buka terminal di D:\ykka\Dapen\
+2. Ketik: ./.safety/backup-before-work.sh
+3. Enter
+4. Mulai coding dengan aman
+
+✅ SETELAH PROGRAM JALAN NORMAL:
+===============================
+INGAT: Buat checkpoint saat program working!
+Command: ./.safety/checkpoint-working-state.sh
+
+Contoh:
+1. Program sudah jalan normal
+2. Ketik: ./.safety/checkpoint-working-state.sh
+3. Enter
+4. Enhancement aman tersimpan
+
+📊 CEK STATUS PROJECT:
+=====================
+INGAT: Lihat progress project kapan saja!
+Command: ./.safety/show-git-structure.sh
+
+Contoh:
+1. Ketik: ./.safety/show-git-structure.sh
+2. Enter
+3. Lihat status lengkap project
+
+🚨 JIKA PROGRAM ERROR/RUSAK:
+===========================
+JANGAN PANIK! Gunakan safe restore!
+Command: ./.safety/safe-restore.sh
+
+Contoh:
+1. Program error setelah fix
+2. Ketik: ./.safety/safe-restore.sh
+3. Enter
+4. Pilih opsi yang sesuai
+5. Enhancement tetap aman!
+
+⚡ COMMANDS SINGKAT:
+===================
+Lihat git tree: git tree -10
+Cek branches: git branch -a
+Status simple: git status
+
+🎯 WORKFLOW HARIAN:
+==================
+PAGI:
+1. Buka terminal di project
+2. Backup: ./.safety/backup-before-work.sh
+3. Mulai coding
+
+SIANG (setelah berhasil):
+1. Checkpoint: ./.safety/checkpoint-working-state.sh
+2. Istirahat dengan tenang
+
+SORE (cek progress):
+1. Status: ./.safety/show-git-structure.sh
+2. Review apa yang sudah dikerjakan
+
+DARURAT (program error):
+1. Restore: ./.safety/safe-restore.sh
+2. Pilih restore option
+3. Enhancement tetap aman
+
+💡 TIPS PENTING:
+===============
+- Selalu backup SEBELUM mulai coding
+- Jangan langsung restore saat error, cek dulu
+- Safety scripts sudah handle semuanya
+- Enhancement tidak akan hilang lagi!
+
+📞 EMERGENCY CONTACT:
+====================
+Jika masih bingung, tanya Claude dengan:
+"Claude, tolong bantu jalankan safety backup"
+"Claude, program error, gimana restore yang aman?"
+
+========================================
+💾 SAVE FILE INI DI DESKTOP UNTUK AKSES MUDAH
+🔄 UPDATE: 2025-09-20 (Latest safety system)

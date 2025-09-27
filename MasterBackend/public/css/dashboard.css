@@ -1,0 +1,38 @@
+/**
+ * Dashboard Styles
+ * Clean CSS for dashboard page components
+ */
+
+/* Welcome Info Section */
+.welcome-info h4 {
+    color: #28a745;
+    margin-bottom: 1rem;
+}
+
+/* Stats Cards */
+.stat-card {
+    padding: 1rem;
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    color: #6c757d;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+/* Stats List */
+.stats-list .stat-item {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #eee;
+}
+
+.stats-list .stat-item:last-child {
+    border-bottom: none;
+}

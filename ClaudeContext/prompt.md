@@ -1,0 +1,2 @@
+perbaiki :
+1. pada saat klik preview kas harian, ada periode tanggal awal sampai tanggal akhir. dan perkiraan 1201010. kemudian saya klik daftar perkiraan , tanggal awal, tanggal akhir,perkiraan masih ikut muncul seharus nya tidak karena dia tidak ada filter. Apa setting dari database yng kurang atau programnya

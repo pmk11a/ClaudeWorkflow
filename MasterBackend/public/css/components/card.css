@@ -1,0 +1,89 @@
+/* DAPEN ERP - Card Component Styles */
+/* Extracted from card.blade.php for clean code architecture */
+
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: none;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    padding: 1rem 1.25rem;
+}
+
+.card-header .card-title {
+    color: #495057;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.card-header .card-subtitle {
+    color: #6c757d;
+    font-size: 0.875rem;
+}
+
+.card-header .card-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.card-body {
+    padding: 1.25rem;
+}
+
+.card-footer {
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    padding: 0.75rem 1.25rem;
+}
+
+/* Hover effect */
+.card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    transition: box-shadow 0.3s ease;
+}
+
+/* Collapsible cards */
+.card .btn-link {
+    color: #6c757d;
+    text-decoration: none;
+    border: none;
+    background: none;
+}
+
+.card .btn-link:hover {
+    color: #495057;
+}
+
+.card .btn-link:focus {
+    box-shadow: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .card-header {
+        padding: 0.75rem 1rem;
+    }
+
+    .card-header .d-flex {
+        flex-direction: column;
+        align-items: stretch !important;
+    }
+
+    .card-header .card-actions {
+        margin-top: 0.5rem;
+        justify-content: stretch;
+    }
+
+    .card-body {
+        padding: 1rem;
+    }
+
+    .card-footer {
+        padding: 0.75rem 1rem;
+    }
+}

@@ -1,0 +1,42 @@
+{
+  "mcpServers": {
+    "simple": {
+      "command": "node",
+      "args": ["/d/ykka/Dapen/mcp-simple/dist/index.js"]
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"],
+      "env": {
+        "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY}"
+      }
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"],
+      "env": {}
+    },
+    "ui-migration": {
+      "command": "node",
+      "args": ["/d/ykka/Dapen/mcp-ui-migration/dist/index.js"],
+      "env": {
+        "DELPHI_SOURCE_PATH": "/d/ykka/Dapen/Delphi",
+        "REACT_TARGET_PATH": "/d/ykka/Dapen/frontend",
+        "COMPONENT_LIBRARY": "antd",
+        "CSS_FRAMEWORK": "tailwind"
+      }
+    },
+    "layout-agent": {
+      "command": "node",
+      "args": ["/d/ykka/Dapen/mcp-layout-agent/dist/index.js"],
+      "env": {
+        "DELPHI_SOURCE_PATH": "/d/ykka/Dapen/Delphi",
+        "BACKEND_PATH": "/d/ykka/Dapen/backend",
+        "FRONTEND_PATH": "/d/ykka/Dapen/frontend",
+        "LAYOUT_OUTPUT_PATH": "/d/ykka/Dapen/layouts",
+        "ENABLE_MODULAR_CSS": "true",
+        "ENABLE_PERFORMANCE_OPT": "true"
+      }
+    }
+  }
+}

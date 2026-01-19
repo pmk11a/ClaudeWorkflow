@@ -1,0 +1,61 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan:*)",
+      "Bash(./vendor/bin/pint:*)",
+      "Bash(php:*)",
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(composer:*)",
+      "Bash(npm:*)",
+      "Bash(git:*)",
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(echo:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(curl:*)",
+      "Read(d:/ykka/migrasi/**)",
+      "Read(d:/ykka/migrasi/pwt/**)",
+      "Write(app/**)",
+      "Write(resources/**)",
+      "Write(routes/**)",
+      "Write(tests/**)",
+      "Write(database/migrations/**)",
+      "Write(.claude/**)",
+      "Write(ai_docs/**)",
+      "Write(migrations-registry/**)",
+      "Skill(delphi-migration)",
+      "Bash(dir:*)",
+      "Bash(if not exist \"storage\\\\framework\\\\sessions\" mkdir storageframeworksessions)",
+      "Bash(del:*)",
+      "Skill(delphi-laravel-migration)",
+      "Bash(xargs:*)",
+      "Skill(delphi-laravel-migration-discovery)",
+      "Bash(wc:*)"
+    ],
+    "deny": [
+      "Bash(php artisan migrate:fresh:*)",
+      "Bash(php artisan migrate:reset:*)",
+      "Bash(php artisan migrate:refresh:*)",
+      "Bash(php artisan db:wipe:*)",
+      "Bash(rm -rf /)",
+      "Bash(sudo:*)",
+      "Write(.env*)",
+      "Write(*.key)",
+      "Write(*.pem)"
+    ],
+    "ask": [
+      "Bash(sqlcmd:*)",
+      "Bash(mysql:*)"
+    ]
+  },
+  "preferences": {
+    "autoApprove": false,
+    "verboseMode": true
+  },
+  "mcpServers": {}
+}
